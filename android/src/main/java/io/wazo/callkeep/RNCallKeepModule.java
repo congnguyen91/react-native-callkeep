@@ -703,7 +703,21 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule {
                     sendEventToJS("RNCallKeepPerformEndCallAction", args);
                     break;
                 case ACTION_ANSWER_CALL:
+                    Log.d("PAV_MOBILE_APP", "ANSWER_CALL");
+                    String packageName = context.getApplicationContext().getPackageName();
+                    Intent focusIntent = context.getPackageManager().getLaunchIntentForPackage(packageName).cloneFilter();
+                    Activity activity = getCurrentActivity();
+                    boolean isClosed = activity == null;
+                    if (isClosed) {
+                        focusIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK +
+                                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED +
+                                WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD +
+                                WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
+                        getReactApplicationContext().startActivity(focusIntent);
+                    }
+
                     args.putString("callUUID", attributeMap.get(EXTRA_CALL_UUID));
+
                     sendEventToJS("RNCallKeepPerformAnswerCallAction", args);
                     break;
                 case ACTION_HOLD_CALL:
