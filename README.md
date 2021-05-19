@@ -9,6 +9,8 @@ For more information about **CallKit** on iOS, please see [Official CallKit Fram
 
 For more information about **ConnectionService** on Android, please see [Android Documentation](https://developer.android.com/reference/android/telecom/ConnectionService) and [Build a calling app](https://developer.android.com/guide/topics/connectivity/telecom/selfManaged)
 
+⚠️ **CallKit** and **ConnectionService** are only available on real devices, this library will not work on simulators.
+
 # Demo
 
 A demo of `react-native-callkeep` is available in the [wazo-react-native-demo](https://github.com/wazo-pbx/wazo-react-native-demo) repository.
@@ -61,6 +63,34 @@ const options = {
 RNCallKeep.setup(options).then(accepted => {});
 ```
 
+iOS only.
+
+Alternative on iOS you can perform setup in `AppDelegate.m`. Doing this allows capturing events prior to the react native event bridge being up. Please be aware that calling setup in `AppDelegate.m` will ignore any subsequent calls to `RNCallKeep.setup();`.
+
+```objective-c
+@implementation AppDelegate
+- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
+{ 
+  self.bridge = [[RCTBridge alloc] initWithDelegate:self launchOptions:launchOptions];
+
+  [RNCallKeep setup:@{
+    @"appName": @"Awesome App",
+    @"maximumCallGroups": @3,
+    @"maximumCallsPerCallGroup": @1,
+    @"supportsVideo": @NO,
+  }];
+
+  RCTRootView *rootView = [[RCTRootView alloc] initWithBridge:self.bridge
+                                                   moduleName:@"App"
+                                            initialProperties:nil];
+
+  // ======== OTHER CODE REDACTED ==========
+
+  return YES;
+}
+
+```
+
 - `options`: Object
   - `ios`: object
     - `appName`: string (required)
@@ -93,6 +123,8 @@ RNCallKeep.setup(options).then(accepted => {});
     - `additionalPermissions`: [PermissionsAndroid] (optional)
       Any additional permissions you'd like your app to have at first launch. Can be used to simplify permission flows and avoid
       multiple popups to the user at different times.
+    - `selfManaged`: boolean (optional)
+      When set to true, call keep will configure itself to run as a self managed connection service. This is an advanced topic, and it's best to refer to [Googles Documentation](https://developer.android.com/guide/topics/connectivity/telecom/selfManaged) on the matter.
       
 `setup` calls internally `registerPhoneAccount` and `registerEvents`.
 
@@ -116,6 +148,23 @@ const { CONSTANTS as CK_CONSTANTS, RNCallKeep } from 'react-native-callkeep';
 
 console.log(CK_CONSTANTS.END_CALL_REASONS.FAILED) // outputs 1
 ```
+
+## Android Self Managed Mode
+_This feature is available only on Android._
+
+Android supports calling apps running in what's called "Self Managed". This means the apps are able (and required) to provide their own UI for managing calls. This includes both in call UI elements and incoming call notification UI. This method is all or nothing. You can't mix partial elements, such as having a custom in call view, but use the default incoming call UI.
+
+To implement a self managed calling app, the following steps are necessary:
+- Set `selfManaged: true` in setup.
+- On an incoming call, from react native, call `RNCallKeep.displayIncomingCall`
+- CallKeep will then fire the `showIncomingCallUi` event.
+- When `showIncomingCallUi` is fired, you must show an incoming call UI. This would be a high priority notification ([Android: Display time-sensitive notifications](https://developer.android.com/training/notify-user/time-sensitive)).
+- If the user answers the call, you call the appropriate RNCallKeep actions such as `answerCall` or `endCall`
+
+Self Managed calling apps are an advanced topic, and there are many steps involved in implementing them, but here are some things to keep in mind:
+- React Native Headless Tasks are a great way to execute React Native code. Remember to start up the headless task as a Foreground Service.
+- Android will deprioritize your high priority FCM notifications if you fail to show an incoming call ui when receiving them.
+- You can avoid getting flooded with sticky foreground service notifications by not defining a Foreground Service for CallKeep, and instead managing this on your own.
 
 ## Methods
 
@@ -641,6 +690,8 @@ Called as soon as JS context initializes if there were some actions performed by
 
 Since iOS 13, you must display incoming call on receiving PushKit push notification. But if app was killed, it takes some time to create JS context. If user answers the call (or ends it) before JS context has been initialized, user actions will be passed as events array of this event. Similar situation can happen if user would like to start a call from Recents or similar iOS app, assuming that your app was in killed state.
 
+In order for this event to reliably fire, it's necessary to perform setup in `AppDelegate.m`
+
 **NOTE: You still need to subscribe / handle the rest events as usuall. This is just a helper whcih cache and propagate early fired events if and only if for "the native events which DID fire BEFORE js bridge is initialed", it does NOT mean this will have events each time when the app reopened.**
 
 ```js
@@ -657,6 +708,27 @@ RNCallKeep.addEventListener('didLoadWithEvents', (events) => {
     Native event name like: `RNCallKeepPerformAnswerCallAction`
   - `data`: object
     Object with data passed together with specific event so it can be handled in the same way like original event, for example `({ callUUID })` for `answerCall` event if `name` is `RNCallKeepPerformAnswerCallAction`
+
+### - showIncomingCallUi
+
+Android only.
+
+Only when CallKeep is setup to be in self managed mode. Signals that the app must show an incoming call UI. The implementor must either call `displayIncomingCall` from react native or native android code to make this event fire.
+
+```js
+RNCallKeep.addEventListener('showIncomingCallUi', ({ handle, callUUID, name }) => {
+
+});
+```
+
+The following values will match those initially passed to `displayIncomingCall`
+
+- `handle` (string)
+  - Phone number of the incoming caller.
+- `callUUID` (string)
+  - The UUID of the call.
+- `name` (string)
+  - Caller Name.
 
 ### - checkReachability
 
@@ -878,7 +950,7 @@ You have to set the `foregroundService` key in the [`setup()`](#setup) method an
 ### Android
 
 ```
-adb logcat *:S RNCallKeepModule:V
+adb logcat *:S RNCallKeep:V
 ```
 
 ## Troubleshooting
