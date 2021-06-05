@@ -48,11 +48,11 @@ class RNCallKeep {
     return this._setupIOS(options.ios);
   };
 
-  registerPhoneAccount = () => {
+  registerPhoneAccount = (isProviderUse) => {
     if (isIOS) {
       return;
     }
-    RNCallKeepModule.registerPhoneAccount();
+    RNCallKeepModule.registerPhoneAccount(isProviderUse);
   };
 
   registerAndroidEvents = () => {
@@ -73,13 +73,13 @@ class RNCallKeep {
   displayIncomingCall = (
     uuid,
     handle,
-    localizedCallerName = '',
+    localizedCallerName,
     handleType = 'number',
     hasVideo = false,
     options = null
   ) => {
     if (!isIOS) {
-      RNCallKeepModule.displayIncomingCall(uuid, handle, localizedCallerName);
+      RNCallKeepModule.displayIncomingCall(uuid, handle, localizedCallerName || '');
       return;
     }
 

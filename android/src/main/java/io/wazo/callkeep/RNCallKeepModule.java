@@ -150,7 +150,7 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule {
         }
 
         if (isConnectionServiceAvailable()) {
-            this.registerPhoneAccount();
+            this.registerPhoneAccount(false);
             this.registerEvents();
             VoiceConnectionService.setAvailable(true);
         }
@@ -159,7 +159,7 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void registerPhoneAccount() {
+    public void registerPhoneAccount(boolean isProviderUse) {
         if (!isConnectionServiceAvailable()) {
             Log.w(TAG, "[VoiceConnection] registerPhoneAccount ignored due to no ConnectionService");
             return;
@@ -167,7 +167,7 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule {
 
         Log.d(TAG, "[VoiceConnection] registerPhoneAccount");
 
-        this.registerPhoneAccount(this.getAppContext());
+        this.registerPhoneAccount(this.getAppContext(), isProviderUse);
     }
 
     @ReactMethod
@@ -648,7 +648,7 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule {
         telecomManager = (TelecomManager) context.getSystemService(Context.TELECOM_SERVICE);
     }
 
-    private void registerPhoneAccount(Context appContext) {
+    private void registerPhoneAccount(Context appContext, boolean isProviderUser) {
         if (!isConnectionServiceAvailable()) {
             Log.w(TAG, "[VoiceConnection] registerPhoneAccount ignored due to no ConnectionService");
             return;
@@ -658,7 +658,7 @@ public class RNCallKeepModule extends ReactContextBaseJavaModule {
         String appName = this.getApplicationName(this.getAppContext());
 
         PhoneAccount.Builder builder = new PhoneAccount.Builder(handle, appName);
-        if (isSelfManaged()) {
+        if (isSelfManaged() && isProviderUser == false) {
             builder.setCapabilities(PhoneAccount.CAPABILITY_SELF_MANAGED);
         }
         else {

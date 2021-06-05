@@ -70,11 +70,11 @@ declare module 'react-native-callkeep' {
 
     static setup(options: IOptions): Promise<boolean>
 
-    static hasDefaultPhoneAccount(): boolean
+    static hasDefaultPhoneAccount(options: any): boolean
 
     static answerIncomingCall(uuid: string): void
 
-    static registerPhoneAccount(): void
+    static registerPhoneAccount(isProviderUse: boolean): void
 
     static registerAndroidEvents(): void
 
